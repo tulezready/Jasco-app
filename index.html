@@ -389,7 +389,7 @@
         <p>All entries — live from the shared database</p>
       </div>
       <div style="display:flex;gap:10px;">
-        <button class="btn btn-outline" onclick="exportCSV()">↓ Export CSV</button>
+        <button class="btn btn-outline" onclick="exportCSV()">↓ Copy Data</button>
         <button class="btn btn-outline" onclick="loadRecords()">↺ Refresh</button>
         <button class="btn btn-gold" onclick="showSection('entry')">+ New Entry</button>
       </div>
@@ -784,19 +784,39 @@
     if (allRecords.length === 0) { showToast('No records to export.', true); return; }
     const hdrs = ['No','Date','District','Company','Owner','Manager','Ward','LLG','Contact','Issues','Penalty','Challenges'];
     const rows = allRecords.map((r, i) => [
-      allRecords.length - i, r.date, r.district, r.company, r.owner, r.manager, r.ward, r.llg, r.contact, r.issues, r.penalty, r.challenges
-    ].map(v => `"${(v||'').replace(/"/g,'""')}"`));
-    const csv = [hdrs.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `JASCO_Records_${new Date().toISOString().slice(0,10)}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-    showToast('CSV exported!');
+      allRecords.length - i, r.date, r.district, r.company, r.owner, r.manager,
+      r.ward, r.llg, r.contact, r.issues, r.penalty, r.challenges
+    ]);
+    let html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <title>JASCO Export – ${new Date().toISOString().slice(0,10)}</title>
+    <style>
+      body { font-family: Arial, sans-serif; padding: 24px; }
+      h2 { margin-bottom: 6px; color: #0d1b2a; }
+      p { color: #666; font-size: 13px; margin-bottom: 16px; }
+      table { border-collapse: collapse; width: 100%; font-size: 13px; }
+      th { background: #0d1b2a; color: white; padding: 9px 12px; text-align: left; }
+      td { padding: 8px 12px; border-bottom: 1px solid #ddd; vertical-align: top; }
+      tr:nth-child(even) td { background: #f9f9f9; }
+      tr:hover td { background: #f0f5ff; }
+      .btn { display: inline-block; margin-bottom: 16px; padding: 9px 20px; background: #c8922a; color: #0d1b2a; border: none; border-radius: 5px; font-size: 14px; font-weight: 600; cursor: pointer; margin-right: 10px; }
+      @media print { .btn { display: none; } }
+    </style></head><body>
+    <h2>JASCO – Daily Data Collection Report</h2>
+    <p>East New Britain Provincial Administration &nbsp;|&nbsp; Division of Commerce &amp; Industry &nbsp;|&nbsp; Exported: ${new Date().toLocaleString()}</p>
+    <button class="btn" onclick="window.print()">🖨 Print / Save as PDF</button>
+    <table>
+      <thead><tr>${hdrs.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+      <tbody>${rows.map(r => `<tr>${r.map(v => `<td>${v||'—'}</td>`).join('')}</tr>`).join('')}</tbody>
+    </table>
+    </body></html>`;
+    const win = window.open('', '_blank');
+    if (!win) {
+      showToast('Popup blocked! Allow popups in your browser address bar.', true);
+      return;
+    }
+    win.document.write(html);
+    win.document.close();
+    showToast('Opened in new tab — click Print to save as PDF!');
   }
 
   function showToast(msg, isError = false) {
