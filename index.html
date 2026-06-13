@@ -815,3 +815,820 @@
 </script>
 </body>
 </html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JASCO – Daily Data Collection</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.2/axios.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --navy: #0d1b2a;
+    --ink: #1a2e42;
+    --steel: #2e4a62;
+    --sky: #4a90b8;
+    --gold: #c8922a;
+    --gold-light: #e8b84b;
+    --paper: #f5f3ee;
+    --white: #ffffff;
+    --muted: #8a9baa;
+    --success: #2d7a4f;
+    --danger: #b03a2e;
+    --border: #d0dae3;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'IBM Plex Sans', sans-serif; background: var(--paper); color: var(--ink); min-height: 100vh; }
+
+  /* SETUP SCREEN */
+  .setup-screen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: var(--navy);
+  }
+
+  .setup-card {
+    background: var(--white);
+    border-radius: 12px;
+    padding: 40px;
+    width: 100%;
+    max-width: 500px;
+  }
+
+  .setup-card .logo-badge {
+    width: 48px; height: 48px;
+    background: var(--gold);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600; font-size: 15px;
+    color: var(--navy);
+    margin-bottom: 20px;
+  }
+
+  .setup-card h2 { font-size: 22px; font-weight: 600; color: var(--navy); margin-bottom: 6px; }
+  .setup-card p { font-size: 13px; color: var(--muted); margin-bottom: 28px; line-height: 1.6; }
+
+  .setup-steps {
+    background: var(--paper);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 24px;
+    font-size: 13px;
+    line-height: 2;
+    color: var(--ink);
+  }
+
+  .setup-steps a { color: var(--sky); }
+
+  /* HEADER */
+  header {
+    background: var(--navy);
+    color: var(--white);
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 64px;
+    position: sticky; top: 0; z-index: 100;
+    border-bottom: 3px solid var(--gold);
+  }
+
+  .header-left { display: flex; align-items: center; gap: 14px; }
+
+  .logo-badge {
+    width: 36px; height: 36px;
+    background: var(--gold);
+    border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600; font-size: 13px;
+    color: var(--navy);
+  }
+
+  .header-title span:first-child { font-size: 11px; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; }
+  .header-title strong { font-size: 15px; font-weight: 600; display: block; }
+  .header-meta { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); text-align: right; line-height: 1.6; }
+
+  .connection-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--success);
+    display: inline-block;
+    margin-right: 6px;
+  }
+  .connection-dot.offline { background: var(--danger); }
+
+  nav { background: var(--ink); display: flex; gap: 2px; padding: 0 24px; }
+  nav button { background: none; border: none; color: var(--muted); padding: 12px 18px; font-family: 'IBM Plex Sans', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.15s; }
+  nav button:hover { color: var(--white); }
+  nav button.active { color: var(--gold-light); border-bottom-color: var(--gold-light); }
+
+  main { max-width: 1400px; margin: 0 auto; padding: 28px 24px; }
+  .section { display: none; }
+  .section.active { display: block; }
+
+  .section-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; gap: 16px; flex-wrap: wrap; }
+  .section-title h2 { font-size: 22px; font-weight: 600; color: var(--navy); }
+  .section-title p { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+  .btn { display: inline-flex; align-items: center; gap: 7px; padding: 9px 18px; border-radius: 5px; border: none; font-family: 'IBM Plex Sans', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; }
+  .btn-primary { background: var(--sky); color: var(--white); }
+  .btn-primary:hover { background: #3a7aa8; }
+  .btn-primary:disabled { background: var(--muted); cursor: not-allowed; }
+  .btn-gold { background: var(--gold); color: var(--navy); }
+  .btn-gold:hover { background: var(--gold-light); }
+  .btn-outline { background: transparent; color: var(--ink); border: 1.5px solid var(--border); }
+  .btn-outline:hover { border-color: var(--sky); color: var(--sky); }
+  .btn-danger { background: transparent; color: var(--danger); border: 1.5px solid var(--danger); }
+  .btn-danger:hover { background: var(--danger); color: white; }
+
+  .form-card { background: var(--white); border: 1.5px solid var(--border); border-radius: 8px; padding: 28px; margin-bottom: 28px; }
+  .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px; margin-bottom: 18px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--steel); }
+  .form-group input, .form-group textarea, .form-group select { padding: 9px 12px; border: 1.5px solid var(--border); border-radius: 5px; font-family: 'IBM Plex Sans', sans-serif; font-size: 14px; color: var(--ink); background: var(--paper); transition: border-color 0.15s; outline: none; }
+  .form-group input:focus, .form-group textarea:focus, .form-group select:focus { border-color: var(--sky); background: var(--white); }
+  .form-group textarea { resize: vertical; min-height: 72px; }
+  .form-divider { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); border-bottom: 1px solid var(--border); padding-bottom: 8px; margin: 20px 0 18px; }
+  .form-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+
+  .toast { position: fixed; bottom: 28px; right: 28px; background: var(--success); color: white; padding: 12px 20px; border-radius: 6px; font-size: 14px; font-weight: 500; opacity: 0; transform: translateY(10px); transition: all 0.25s; z-index: 999; pointer-events: none; }
+  .toast.show { opacity: 1; transform: translateY(0); }
+
+  .filter-bar { display: flex; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; align-items: center; }
+  .filter-bar input, .filter-bar select { padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 5px; font-family: 'IBM Plex Sans', sans-serif; font-size: 13px; background: var(--white); color: var(--ink); outline: none; }
+  .filter-bar input { flex: 1; min-width: 180px; }
+  .filter-bar input:focus, .filter-bar select:focus { border-color: var(--sky); }
+  .results-count { font-size: 12px; color: var(--muted); margin-left: auto; white-space: nowrap; align-self: center; }
+
+  .table-wrap { background: var(--white); border: 1.5px solid var(--border); border-radius: 8px; overflow: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 900px; }
+  thead th { background: var(--navy); color: var(--white); padding: 11px 14px; text-align: left; font-size: 11px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; white-space: nowrap; }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: #f0f5fa; }
+  tbody td { padding: 10px 14px; color: var(--ink); vertical-align: top; max-width: 200px; word-break: break-word; }
+
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .tag-red { background: #fdecea; color: var(--danger); }
+  .tag-green { background: #e8f5ee; color: var(--success); }
+  .tag-yellow { background: #fef9e7; color: #a07c1a; }
+
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
+
+  .btn-sm { padding: 5px 10px; font-size: 12px; border-radius: 4px; border: none; cursor: pointer; font-family: 'IBM Plex Sans', sans-serif; font-weight: 500; }
+  .btn-sm-edit { background: #eaf3fa; color: var(--sky); }
+  .btn-sm-edit:hover { background: var(--sky); color: white; }
+  .btn-sm-del { background: #fdecea; color: var(--danger); }
+  .btn-sm-del:hover { background: var(--danger); color: white; }
+  .row-actions { display: flex; gap: 6px; }
+
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 28px; }
+  .stat-card { background: var(--white); border: 1.5px solid var(--border); border-radius: 8px; padding: 20px; position: relative; overflow: hidden; }
+  .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+  .stat-card.blue::before { background: var(--sky); }
+  .stat-card.gold::before { background: var(--gold); }
+  .stat-card.green::before { background: var(--success); }
+  .stat-card.red::before { background: var(--danger); }
+  .stat-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); margin-bottom: 8px; }
+  .stat-value { font-family: 'IBM Plex Mono', monospace; font-size: 32px; font-weight: 600; color: var(--navy); line-height: 1; }
+
+  .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 700px) { .dashboard-grid { grid-template-columns: 1fr; } }
+
+  .dash-card { background: var(--white); border: 1.5px solid var(--border); border-radius: 8px; padding: 20px; }
+  .dash-card h3 { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--steel); margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+  .dash-list-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f0f4f8; font-size: 13px; }
+  .dash-list-item:last-child { border-bottom: none; }
+  .issue-item { padding: 10px 0; border-bottom: 1px solid #f0f4f8; font-size: 13px; }
+  .issue-item:last-child { border-bottom: none; }
+  .issue-company { font-weight: 600; color: var(--navy); }
+  .issue-text { color: var(--muted); margin-top: 2px; font-size: 12px; }
+
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(13,27,42,0.6); z-index: 200; align-items: center; justify-content: center; padding: 20px; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--white); border-radius: 10px; padding: 28px; width: 100%; max-width: 680px; max-height: 90vh; overflow-y: auto; }
+  .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  .modal-header h3 { font-size: 18px; font-weight: 600; color: var(--navy); }
+  .modal-close { background: none; border: none; font-size: 22px; color: var(--muted); cursor: pointer; padding: 2px 6px; border-radius: 4px; }
+  .modal-close:hover { background: var(--paper); color: var(--ink); }
+
+  .loading { text-align: center; padding: 40px; color: var(--muted); font-size: 14px; }
+  .spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--sky); border-radius: 50%; animation: spin 0.7s linear infinite; margin-right: 10px; vertical-align: middle; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- SETUP SCREEN -->
+<div id="setup-screen" class="setup-screen">
+  <div class="setup-card">
+    <div class="logo-badge">ENB</div>
+    <h2>Connect to Supabase</h2>
+    <p>Enter your Supabase project details below. You only need to do this once — it'll be saved in your browser.</p>
+
+    <div class="setup-steps">
+      1. Go to <a href="https://supabase.com" target="_blank">supabase.com</a> and open your project<br>
+      2. Click <strong>Project Settings → API</strong><br>
+      3. Copy your <strong>Project URL</strong> and <strong>anon/public key</strong><br>
+      4. Also run the SQL below in your <strong>SQL Editor</strong>
+    </div>
+
+    <div style="background:#0d1b2a;color:#e8b84b;font-family:'IBM Plex Mono',monospace;font-size:12px;padding:14px 16px;border-radius:6px;margin-bottom:20px;line-height:1.8;">
+      CREATE TABLE jasco_records (<br>
+      &nbsp;&nbsp;id bigint generated always as identity primary key,<br>
+      &nbsp;&nbsp;created_at timestamptz default now(),<br>
+      &nbsp;&nbsp;date text,<br>
+      &nbsp;&nbsp;district text,<br>
+      &nbsp;&nbsp;ward text,<br>
+      &nbsp;&nbsp;llg text,<br>
+      &nbsp;&nbsp;company text,<br>
+      &nbsp;&nbsp;owner text,<br>
+      &nbsp;&nbsp;manager text,<br>
+      &nbsp;&nbsp;contact text,<br>
+      &nbsp;&nbsp;issues text,<br>
+      &nbsp;&nbsp;penalty text,<br>
+      &nbsp;&nbsp;challenges text<br>
+      );
+    </div>
+
+    <div class="form-group" style="margin-bottom:14px;">
+      <label>Supabase Project URL</label>
+      <input type="text" id="setup-url" placeholder="https://xxxxxxxxxxx.supabase.co">
+    </div>
+    <div class="form-group" style="margin-bottom:20px;">
+      <label>Supabase Anon/Public Key</label>
+      <input type="text" id="setup-key" placeholder="eyJhbGciOiJIUzI1NiIs...">
+    </div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="connectSupabase()">Connect & Open App</button>
+    <p style="margin-top:14px;font-size:12px;color:var(--muted);text-align:center;">Your keys are stored locally on your device only.</p>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app" style="display:none;">
+
+<header>
+  <div class="header-left">
+    <div class="logo-badge">ENB</div>
+    <div class="header-title">
+      <span>East New Britain Provincial Administration</span>
+      <strong>JASCO – Daily Data Collection</strong>
+    </div>
+  </div>
+  <div class="header-meta">
+    <span class="connection-dot" id="conn-dot"></span><span id="conn-status">Connected</span><br>
+    District: Pomio &nbsp;|&nbsp; Coordinator: Elvin Bedi
+  </div>
+</header>
+
+<nav>
+  <button class="active" onclick="showSection('dashboard')">Dashboard</button>
+  <button onclick="showSection('entry')">New Entry</button>
+  <button onclick="showSection('records')">Records</button>
+  <button onclick="resetConnection()" style="margin-left:auto;font-size:12px;color:var(--muted);">⚙ Settings</button>
+</nav>
+
+<main>
+
+  <!-- DASHBOARD -->
+  <div id="dashboard" class="section active">
+    <div class="section-header">
+      <div class="section-title">
+        <h2>Overview</h2>
+        <p>Summary of all inspection records</p>
+      </div>
+      <button class="btn btn-gold" onclick="showSection('entry')">+ New Entry</button>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card blue"><div class="stat-label">Total Inspections</div><div class="stat-value" id="stat-total">—</div></div>
+      <div class="stat-card red"><div class="stat-label">Non-compliant</div><div class="stat-value" id="stat-noncompliant">—</div></div>
+      <div class="stat-card gold"><div class="stat-label">Penalties Issued</div><div class="stat-value" id="stat-penalties">—</div></div>
+      <div class="stat-card green"><div class="stat-label">Businesses Logged</div><div class="stat-value" id="stat-businesses">—</div></div>
+    </div>
+    <div class="dashboard-grid">
+      <div class="dash-card"><h3>Recent Inspections</h3><div id="dash-recent"><div class="loading"><span class="spinner"></span>Loading…</div></div></div>
+      <div class="dash-card"><h3>Non-compliance Issues</h3><div id="dash-issues"><div class="loading"><span class="spinner"></span>Loading…</div></div></div>
+    </div>
+  </div>
+
+  <!-- ENTRY FORM -->
+  <div id="entry" class="section">
+    <div class="section-header">
+      <div class="section-title">
+        <h2>New Inspection Entry</h2>
+        <p>Fill in the details from today's inspection</p>
+      </div>
+    </div>
+    <div class="form-card">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Date *</label>
+          <input type="date" id="f-date">
+        </div>
+        <div class="form-group">
+          <label>District *</label>
+          <select id="f-district">
+            <option value="">— Select District —</option>
+            <option value="Gazelle District">Gazelle District</option>
+            <option value="Kokopo District">Kokopo District</option>
+            <option value="Pomio District">Pomio District</option>
+            <option value="Rabaul District">Rabaul District</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Ward / Location of Business *</label>
+          <input type="text" id="f-ward" placeholder="e.g. Ward 3, Pomio Town">
+        </div>
+        <div class="form-group">
+          <label>LLG</label>
+          <input type="text" id="f-llg" placeholder="Local Level Government">
+        </div>
+      </div>
+
+      <div class="form-divider">Business Details</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Name of Company *</label>
+          <input type="text" id="f-company" placeholder="Registered business name">
+        </div>
+        <div class="form-group">
+          <label>Name of Owner</label>
+          <input type="text" id="f-owner" placeholder="Owner's full name">
+        </div>
+        <div class="form-group">
+          <label>Name of Manager</label>
+          <input type="text" id="f-manager" placeholder="Manager's full name">
+        </div>
+        <div class="form-group">
+          <label>Contact of Owner / Manager</label>
+          <input type="text" id="f-contact" placeholder="Phone number">
+        </div>
+      </div>
+
+      <div class="form-divider">Inspection Findings</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Non-compliance Issues Identified</label>
+          <textarea id="f-issues" placeholder="Describe any violations or issues found…"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Penalty Imposed / Which Agency</label>
+          <textarea id="f-penalty" placeholder="e.g. K500 fine – Commerce Division"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Challenges During Inspection</label>
+          <textarea id="f-challenges" placeholder="Any difficulties encountered…"></textarea>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-primary" id="save-btn" onclick="saveRecord()">Save Record</button>
+        <button class="btn btn-outline" onclick="clearForm()">Clear</button>
+        <button class="btn btn-outline" onclick="showSection('records')">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RECORDS -->
+  <div id="records" class="section">
+    <div class="section-header">
+      <div class="section-title">
+        <h2>Inspection Records</h2>
+        <p>All entries — live from the shared database</p>
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-outline" onclick="exportCSV()">↓ Export CSV</button>
+        <button class="btn btn-outline" onclick="loadRecords()">↺ Refresh</button>
+        <button class="btn btn-gold" onclick="showSection('entry')">+ New Entry</button>
+      </div>
+    </div>
+    <div class="filter-bar">
+      <input type="text" id="search-input" placeholder="Search company, owner, ward…" oninput="filterTable()">
+      <select id="filter-district" onchange="filterTable()">
+        <option value="">All Districts</option>
+        <option value="Gazelle District">Gazelle District</option>
+        <option value="Kokopo District">Kokopo District</option>
+        <option value="Pomio District">Pomio District</option>
+        <option value="Rabaul District">Rabaul District</option>
+      </select>
+      <select id="filter-compliance" onchange="filterTable()">
+        <option value="">All Records</option>
+        <option value="yes">Has Issues</option>
+        <option value="no">No Issues</option>
+      </select>
+      <input type="date" id="filter-date" onchange="filterTable()">
+      <button class="btn btn-outline" onclick="clearFilters()">Clear</button>
+      <span class="results-count" id="results-count"></span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Date</th>
+            <th>District</th>
+            <th>Company</th>
+            <th>Owner</th>
+            <th>Manager</th>
+            <th>Ward / LLG</th>
+            <th>Contact</th>
+            <th>Issues</th>
+            <th>Penalty</th>
+            <th>Challenges</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="records-tbody">
+          <tr><td colspan="12"><div class="loading"><span class="spinner"></span>Loading records…</div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Edit Record</h3>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Date</label><input type="date" id="m-date"></div>
+      <div class="form-group"><label>District</label>
+        <select id="m-district">
+          <option value="">— Select District —</option>
+          <option value="Gazelle District">Gazelle District</option>
+          <option value="Kokopo District">Kokopo District</option>
+          <option value="Pomio District">Pomio District</option>
+          <option value="Rabaul District">Rabaul District</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Ward</label><input type="text" id="m-ward"></div>
+      <div class="form-group"><label>LLG</label><input type="text" id="m-llg"></div>
+    </div>
+    <div class="form-divider">Business</div>
+    <div class="form-row">
+      <div class="form-group"><label>Company</label><input type="text" id="m-company"></div>
+      <div class="form-group"><label>Owner</label><input type="text" id="m-owner"></div>
+      <div class="form-group"><label>Manager</label><input type="text" id="m-manager"></div>
+      <div class="form-group"><label>Contact</label><input type="text" id="m-contact"></div>
+    </div>
+    <div class="form-divider">Findings</div>
+    <div class="form-row">
+      <div class="form-group"><label>Issues</label><textarea id="m-issues"></textarea></div>
+      <div class="form-group"><label>Penalty</label><textarea id="m-penalty"></textarea></div>
+      <div class="form-group"><label>Challenges</label><textarea id="m-challenges"></textarea></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-primary" onclick="saveEdit()">Save Changes</button>
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let SUPABASE_URL = '';
+  let SUPABASE_KEY = '';
+  let allRecords = [];
+  let editId = null;
+
+  // ── INIT ──
+  function init() {
+    SUPABASE_URL = localStorage.getItem('jasco_url') || '';
+    SUPABASE_KEY = localStorage.getItem('jasco_key') || '';
+    if (SUPABASE_URL && SUPABASE_KEY) {
+      document.getElementById('setup-screen').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+      document.getElementById('f-date').valueAsDate = new Date();
+      loadRecords();
+      renderDashboard();
+    }
+  }
+
+  function connectSupabase() {
+    const url = document.getElementById('setup-url').value.trim().replace(/\/$/, '');
+    const key = document.getElementById('setup-key').value.trim();
+    if (!url || !key) { alert('Please enter both the URL and API key.'); return; }
+    localStorage.setItem('jasco_url', url);
+    localStorage.setItem('jasco_key', key);
+    SUPABASE_URL = url;
+    SUPABASE_KEY = key;
+    document.getElementById('setup-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    document.getElementById('f-date').valueAsDate = new Date();
+    loadRecords();
+    renderDashboard();
+  }
+
+  function resetConnection() {
+    if (!confirm('Reset your Supabase connection? You will need to re-enter your credentials.')) return;
+    localStorage.removeItem('jasco_url');
+    localStorage.removeItem('jasco_key');
+    location.reload();
+  }
+
+  // ── API HELPERS ──
+  function headers() {
+    return { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' };
+  }
+
+  async function apiGet(params = '') {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/jasco_records?order=created_at.desc${params}`, { headers: headers() });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  }
+
+  async function apiInsert(data) {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/jasco_records`, { method: 'POST', headers: headers(), body: JSON.stringify(data) });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  }
+
+  async function apiUpdate(id, data) {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/jasco_records?id=eq.${id}`, { method: 'PATCH', headers: headers(), body: JSON.stringify(data) });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  }
+
+  async function apiDelete(id) {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/jasco_records?id=eq.${id}`, { method: 'DELETE', headers: headers() });
+    if (!res.ok) throw new Error(await res.text());
+  }
+
+  // ── LOAD RECORDS ──
+  async function loadRecords() {
+    setConnectionStatus(true);
+    try {
+      allRecords = await apiGet();
+      renderTable(allRecords);
+      updateStats(allRecords);
+    } catch(e) {
+      setConnectionStatus(false);
+      showToast('Could not load records. Check your connection.', true);
+    }
+  }
+
+  function setConnectionStatus(ok) {
+    const dot = document.getElementById('conn-dot');
+    const txt = document.getElementById('conn-status');
+    if (dot) { dot.className = 'connection-dot' + (ok ? '' : ' offline'); }
+    if (txt) { txt.textContent = ok ? 'Connected' : 'Offline'; }
+  }
+
+  // ── SAVE RECORD ──
+  async function saveRecord() {
+    const company = document.getElementById('f-company').value.trim();
+    const date = document.getElementById('f-date').value;
+    const district = document.getElementById('f-district').value;
+    const ward = document.getElementById('f-ward').value.trim();
+
+    if (!company || !date || !district || !ward) {
+      showToast('Please fill in Date, District, Ward, and Company name.', true);
+      return;
+    }
+
+    const btn = document.getElementById('save-btn');
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+
+    const rec = {
+      date, district, ward,
+      llg: document.getElementById('f-llg').value.trim(),
+      company,
+      owner: document.getElementById('f-owner').value.trim(),
+      manager: document.getElementById('f-manager').value.trim(),
+      contact: document.getElementById('f-contact').value.trim(),
+      issues: document.getElementById('f-issues').value.trim(),
+      penalty: document.getElementById('f-penalty').value.trim(),
+      challenges: document.getElementById('f-challenges').value.trim(),
+    };
+
+    try {
+      await apiInsert(rec);
+      clearForm();
+      showToast('Record saved! Visible to both of you now.');
+      await loadRecords();
+      showSection('records');
+    } catch(e) {
+      showToast('Save failed. Check your connection.', true);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Save Record';
+    }
+  }
+
+  function clearForm() {
+    ['f-date','f-district','f-ward','f-llg','f-company','f-owner','f-manager','f-contact','f-issues','f-penalty','f-challenges'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+    document.getElementById('f-date').valueAsDate = new Date();
+  }
+
+  // ── TABLE ──
+  function filterTable() {
+    const search = document.getElementById('search-input').value.toLowerCase();
+    const district = document.getElementById('filter-district').value;
+    const compliance = document.getElementById('filter-compliance').value;
+    const dateFilter = document.getElementById('filter-date').value;
+
+    const filtered = allRecords.filter(r => {
+      const text = [r.company, r.owner, r.manager, r.ward, r.llg, r.contact].join(' ').toLowerCase();
+      return (!search || text.includes(search))
+        && (!district || r.district === district)
+        && (!compliance || (compliance === 'yes' ? r.issues : !r.issues))
+        && (!dateFilter || r.date === dateFilter);
+    });
+
+    renderTable(filtered);
+  }
+
+  function renderTable(data) {
+    document.getElementById('results-count').textContent = `${data.length} record${data.length !== 1 ? 's' : ''}`;
+    const tbody = document.getElementById('records-tbody');
+
+    if (data.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="12"><div class="empty-state"><div class="icon">📋</div><p>No records found.</p></div></td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = data.map((r, i) => `
+      <tr>
+        <td style="color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:12px">${data.length - i}</td>
+        <td style="white-space:nowrap">${r.date || '—'}</td>
+        <td>${r.district || '—'}</td>
+        <td><strong>${r.company}</strong></td>
+        <td>${r.owner || '—'}</td>
+        <td>${r.manager || '—'}</td>
+        <td>${[r.ward, r.llg].filter(Boolean).join(' / ') || '—'}</td>
+        <td>${r.contact || '—'}</td>
+        <td>${r.issues ? `<span class="tag tag-red">⚠ Issues</span>` : `<span class="tag tag-green">✓ Clear</span>`}</td>
+        <td>${r.penalty ? `<span class="tag tag-yellow">Penalised</span>` : '—'}</td>
+        <td style="color:var(--muted);font-size:12px">${r.challenges ? r.challenges.substring(0,40)+(r.challenges.length>40?'…':'') : '—'}</td>
+        <td>
+          <div class="row-actions">
+            <button class="btn-sm btn-sm-edit" onclick="openEdit(${r.id})">Edit</button>
+            <button class="btn-sm btn-sm-del" onclick="deleteRecord(${r.id})">Del</button>
+          </div>
+        </td>
+      </tr>`).join('');
+  }
+
+  // ── EDIT ──
+  function openEdit(id) {
+    const r = allRecords.find(x => x.id === id);
+    if (!r) return;
+    editId = id;
+    document.getElementById('m-date').value = r.date || '';
+    document.getElementById('m-district').value = r.district || '';
+    document.getElementById('m-ward').value = r.ward || '';
+    document.getElementById('m-llg').value = r.llg || '';
+    document.getElementById('m-company').value = r.company || '';
+    document.getElementById('m-owner').value = r.owner || '';
+    document.getElementById('m-manager').value = r.manager || '';
+    document.getElementById('m-contact').value = r.contact || '';
+    document.getElementById('m-issues').value = r.issues || '';
+    document.getElementById('m-penalty').value = r.penalty || '';
+    document.getElementById('m-challenges').value = r.challenges || '';
+    document.getElementById('modal').classList.add('open');
+  }
+
+  async function saveEdit() {
+    if (!editId) return;
+    const data = {
+      date: document.getElementById('m-date').value,
+      district: document.getElementById('m-district').value,
+      ward: document.getElementById('m-ward').value.trim(),
+      llg: document.getElementById('m-llg').value.trim(),
+      company: document.getElementById('m-company').value.trim(),
+      owner: document.getElementById('m-owner').value.trim(),
+      manager: document.getElementById('m-manager').value.trim(),
+      contact: document.getElementById('m-contact').value.trim(),
+      issues: document.getElementById('m-issues').value.trim(),
+      penalty: document.getElementById('m-penalty').value.trim(),
+      challenges: document.getElementById('m-challenges').value.trim(),
+    };
+    try {
+      await apiUpdate(editId, data);
+      closeModal();
+      showToast('Record updated!');
+      await loadRecords();
+    } catch(e) {
+      showToast('Update failed.', true);
+    }
+  }
+
+  async function deleteRecord(id) {
+    if (!confirm('Delete this record? This cannot be undone.')) return;
+    try {
+      await apiDelete(id);
+      showToast('Record deleted.');
+      await loadRecords();
+    } catch(e) {
+      showToast('Delete failed.', true);
+    }
+  }
+
+  function closeModal() {
+    document.getElementById('modal').classList.remove('open');
+    editId = null;
+  }
+
+  // ── DASHBOARD ──
+  function updateStats(data) {
+    document.getElementById('stat-total').textContent = data.length;
+    document.getElementById('stat-noncompliant').textContent = data.filter(r => r.issues).length;
+    document.getElementById('stat-penalties').textContent = data.filter(r => r.penalty).length;
+    const companies = new Set(data.map(r => (r.company||'').toLowerCase()));
+    document.getElementById('stat-businesses').textContent = companies.size;
+  }
+
+  async function renderDashboard() {
+    try {
+      const data = await apiGet('&limit=50');
+      updateStats(data);
+
+      const recent = data.slice(0, 5);
+      document.getElementById('dash-recent').innerHTML = recent.length === 0
+        ? '<p style="color:var(--muted);font-size:13px">No records yet.</p>'
+        : recent.map(r => `<div class="dash-list-item"><span><strong>${r.company}</strong><br><span style="font-size:12px;color:var(--muted)">${r.district||''}</span></span><span style="color:var(--muted);font-size:12px">${r.date||'—'}</span></div>`).join('');
+
+      const issues = data.filter(r => r.issues).slice(0, 5);
+      document.getElementById('dash-issues').innerHTML = issues.length === 0
+        ? '<p style="color:var(--muted);font-size:13px">No non-compliance issues logged.</p>'
+        : issues.map(r => `<div class="issue-item"><div class="issue-company">${r.company}</div><div class="issue-text">${r.issues.substring(0,80)}${r.issues.length>80?'…':''}</div></div>`).join('');
+    } catch(e) {
+      document.getElementById('dash-recent').innerHTML = '<p style="color:var(--muted);font-size:13px">Could not load data.</p>';
+      document.getElementById('dash-issues').innerHTML = '';
+    }
+  }
+
+  // ── UTILS ──
+  function showSection(id) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    const tabs = ['dashboard','entry','records'];
+    const idx = tabs.indexOf(id);
+    if (idx >= 0) document.querySelectorAll('nav button')[idx].classList.add('active');
+    if (id === 'dashboard') renderDashboard();
+    if (id === 'records') loadRecords();
+  }
+
+  function clearFilters() {
+    document.getElementById('search-input').value = '';
+    document.getElementById('filter-district').value = '';
+    document.getElementById('filter-compliance').value = '';
+    document.getElementById('filter-date').value = '';
+    renderTable(allRecords);
+  }
+
+  function exportCSV() {
+    if (allRecords.length === 0) { showToast('No records to export.', true); return; }
+    const hdrs = ['No','Date','District','Company','Owner','Manager','Ward','LLG','Contact','Issues','Penalty','Challenges'];
+    const rows = allRecords.map((r, i) => [
+      allRecords.length - i, r.date, r.district, r.company, r.owner, r.manager, r.ward, r.llg, r.contact, r.issues, r.penalty, r.challenges
+    ].map(v => `"${(v||'').replace(/"/g,'""')}"`));
+    const csv = [hdrs.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `JASCO_Records_${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    showToast('CSV exported!');
+  }
+
+  function showToast(msg, isError = false) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.background = isError ? 'var(--danger)' : 'var(--success)';
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3500);
+  }
+
+  document.getElementById('modal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+  });
+
+  init();
+</script>
+</body>
+</html>
