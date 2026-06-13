@@ -389,7 +389,7 @@
         <p>All entries — live from the shared database</p>
       </div>
       <div style="display:flex;gap:10px;">
-        <button class="btn btn-outline" onclick="exportCSV()">↓ Export CSV</button>
+        <button class="btn btn-outline" onclick="exportCSV()">↓ Copy Data</button>
         <button class="btn btn-outline" onclick="loadRecords()">↺ Refresh</button>
         <button class="btn btn-gold" onclick="showSection('entry')">+ New Entry</button>
       </div>
@@ -780,35 +780,31 @@
     renderTable(allRecords);
   }
 
-  function exportCSV_old_DISABLED() {
+  function exportCSV() {
     if (allRecords.length === 0) { showToast('No records to export.', true); return; }
     const hdrs = ['No','Date','District','Company','Owner','Manager','Ward','LLG','Contact','Issues','Penalty','Challenges'];
     const rows = allRecords.map((r, i) => [
-      allRecords.length - i, r.date, r.district, r.company, r.owner, r.manager, r.ward, r.llg, r.contact, r.issues, r.penalty, r.challenges
-    ].map(v => `"${(v||'').replace(/"/g,'""')}"`));
-    const csv = [hdrs.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `JASCO_Records_${new Date().toISOString().slice(0,10)}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-    showToast('CSV exported!');
-  }
-
-  function exportCSV() {
-    if (allRecords.length === 0) { showToast("No records to export.", true); return; }
-    const hdrs = ["No","Date","District","Company","Owner","Manager","Ward","LLG","Contact","Issues","Penalty","Challenges"];
-    const rows = allRecords.map((r, i) => [allRecords.length - i, r.date, r.district, r.company, r.owner, r.manager, r.ward, r.llg, r.contact, r.issues, r.penalty, r.challenges]);
-    let html = "<html><head><meta charset=UTF-8><title>JASCO Export</title><style>body{font-family:Arial,sans-serif;padding:24px}h2{margin-bottom:6px}p{color:#666;font-size:13px;margin-bottom:16px}table{border-collapse:collapse;width:100%;font-size:13px}th{background:#0d1b2a;color:white;padding:9px 12px;text-align:left}td{padding:8px 12px;border-bottom:1px solid #ddd}.btn{display:inline-block;margin-bottom:16px;padding:9px 18px;background:#c8922a;color:#0d1b2a;border:none;border-radius:5px;font-size:14px;font-weight:600;cursor:pointer}</style></head><body><h2>JASCO – Daily Data Collection Report</h2><p>East New Britain Provincial Administration | Exported: " + new Date().toLocaleString() + "</p><button class=btn onclick=window.print()>Print / Save as PDF</button><table><thead><tr>" + hdrs.map(h => "<th>" + h + "</th>").join("") + "</tr></thead><tbody>" + rows.map(r => "<tr>" + r.map(v => "<td>" + (v||"—") + "</td>").join("") + "</tr>").join("") + "</tbody></table></body></html>";
-    const win = window.open("", "_blank");
-    if (!win) { showToast("Please allow popups for this site.", true); return; }
-    win.document.write(html);
-    win.document.close();
-    showToast("Opened in new tab — use Print to save as PDF!");
+      allRecords.length - i, r.date, r.district, r.company, r.owner, r.manager,
+      r.ward, r.llg, r.contact, r.issues, r.penalty, r.challenges
+    ]);
+    const tsv = [hdrs.join('\t'), ...rows.map(r => r.map(v => (v||'')).join('\t'))].join('\n');
+    navigator.clipboard.writeText(tsv).then(() => {
+      showToast('Data copied! Paste into Excel or Google Sheets.');
+    }).catch(() => {
+      // fallback: show in textarea
+      const ta = document.createElement('textarea');
+      ta.value = tsv;
+      ta.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:80%;height:300px;z-index:9999;padding:12px;font-family:monospace;font-size:12px;border:2px solid #c8922a;border-radius:8px;';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      const close = document.createElement('button');
+      close.textContent = 'Close';
+      close.style.cssText = 'position:fixed;top:calc(50% - 170px);left:calc(50% + 160px);z-index:10000;padding:8px 14px;background:#c8922a;border:none;border-radius:5px;cursor:pointer;font-weight:600;';
+      close.onclick = () => { document.body.removeChild(ta); document.body.removeChild(close); };
+      document.body.appendChild(close);
+      showToast('Select all text and copy, then paste into Excel.');
+    });
   }
 
   function showToast(msg, isError = false) {
