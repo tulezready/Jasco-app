@@ -326,7 +326,7 @@
         </div>
         <div class="form-group">
           <label>District *</label>
-          <select id="f-district">
+          <select id="f-district" onchange="updateLLG()">
             <option value="">— Select District —</option>
             <option value="Gazelle District">Gazelle District</option>
             <option value="Kokopo District">Kokopo District</option>
@@ -396,7 +396,7 @@
         <p>All entries — live from the shared database</p>
       </div>
       <div style="display:flex;gap:10px;">
-        <button class="btn btn-outline" onclick="exportCSV()">↓ Export Data</button>
+        <button class="btn btn-outline" onclick="exportCSV()">↓ Copy Data</button>
         <button class="btn btn-outline" onclick="loadRecords()">↺ Refresh</button>
         <button class="btn btn-gold" onclick="showSection('entry')">+ New Entry</button>
       </div>
@@ -496,6 +496,60 @@
   let SUPABASE_KEY = '';
   let allRecords = [];
   let editId = null;
+
+
+  const wardData = {
+    "Kokopo District": {
+      "Bitapaka LLG": ["Tavui No. 1","Tavui No. 2","Balada","Ratavul","Ralubang","Togoro","Tabuna","Katakatai","Vunabaur","Watwat","Londip","Ganai","Marmar","Menebonbon","Bilur","Korai","Kamakamar","Birar","Makurapau","Rainau","Malakuna","Ulaveo"],
+      "Duke of York LLG": ["Makada/Nagaila","Molot","Maren","Butlivuan","Waira","Nabual","Inolo","Kumaina","Kabilomo","Urakukur","Kababiai","Mualim","Virian","Palpal","Utuan","Karawara","Mioko","Urukuk","Pirtop","Nakukur No. 1 & 2","Rakanda"],
+      "Kokopo-Vunamami Urban LLG": ["Karavi","Vunamami","Bitarebarebe","Vunababal","Gunanba","Tinganavudu","Malakuna","Ulagunan","Livuan","Ramale","Bitagalip","Kabakaul","Takubar","Palnakaur","Ulaulatava","Vunapope","Ngunguna","Gunanur","Palavirua","Vunamami No. 2","Kokopo Town"],
+      "Raluana LLG": ["Raburua","Bitatita","Nguvalian","Raluana","Barovon","Ialakua","Vunatagia","Ranguna","Bitabaur","Vunamurmur","Vunaulul","Ralalar","Turagunan","Kunakunai","Ngatur","Tinganalom","Nanuk","Balanataman","Ravat","Talakua"]
+    },
+    "Gazelle District": {},
+    "Pomio District": {},
+    "Rabaul District": {}
+  };
+
+  function updateLLG() {
+    const district = document.getElementById('f-district').value;
+    const llgSelect = document.getElementById('f-llg');
+    const wardSelect = document.getElementById('f-ward');
+
+    llgSelect.innerHTML = '<option value="">— Select LLG —</option>';
+    wardSelect.innerHTML = '<option value="">— Select Ward —</option>';
+
+    if (district && wardData[district]) {
+      const llgs = Object.keys(wardData[district]);
+      if (llgs.length > 0) {
+        llgs.forEach(llg => {
+          llgSelect.innerHTML += `<option value="${llg}">${llg}</option>`;
+        });
+        llgSelect.disabled = false;
+      } else {
+        llgSelect.disabled = true;
+      }
+    } else {
+      llgSelect.disabled = true;
+    }
+    wardSelect.disabled = true;
+  }
+
+  function updateWards() {
+    const district = document.getElementById('f-district').value;
+    const llg = document.getElementById('f-llg').value;
+    const wardSelect = document.getElementById('f-ward');
+
+    wardSelect.innerHTML = '<option value="">— Select Ward —</option>';
+
+    if (district && llg && wardData[district] && wardData[district][llg]) {
+      wardData[district][llg].forEach(ward => {
+        wardSelect.innerHTML += `<option value="${ward}">${ward}</option>`;
+      });
+      wardSelect.disabled = false;
+    } else {
+      wardSelect.disabled = true;
+    }
+  }
 
   // ── INIT ──
   function init() {
@@ -623,9 +677,13 @@
   }
 
   function clearForm() {
-    ['f-date','f-district','f-ward','f-llg','f-company','f-owner','f-manager','f-contact','f-issues','f-penalty','f-challenges'].forEach(id => {
+    ['f-date','f-district','f-company','f-owner','f-manager','f-contact','f-issues','f-penalty','f-challenges'].forEach(id => {
       document.getElementById(id).value = '';
     });
+    document.getElementById('f-llg').innerHTML = '<option value="">— Select LLG —</option>';
+    document.getElementById('f-llg').disabled = true;
+    document.getElementById('f-ward').innerHTML = '<option value="">— Select Ward —</option>';
+    document.getElementById('f-ward').disabled = true;
     document.getElementById('f-date').valueAsDate = new Date();
   }
 
