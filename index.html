@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>JASCO – Daily Data Collection</title>
+<meta name="theme-color" content="#0d1b2a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="JASCO">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.png">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.2/axios.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
@@ -389,7 +396,7 @@
         <p>All entries — live from the shared database</p>
       </div>
       <div style="display:flex;gap:10px;">
-        <button class="btn btn-outline" onclick="exportCSV()">↓ Export Data</button>
+        <button class="btn btn-outline" onclick="exportCSV()">↓ Copy Data</button>
         <button class="btn btn-outline" onclick="loadRecords()">↺ Refresh</button>
         <button class="btn btn-gold" onclick="showSection('entry')">+ New Entry</button>
       </div>
@@ -838,6 +845,15 @@
   });
 
   init();
+</script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js')
+        .then(reg => console.log('SW registered'))
+        .catch(err => console.log('SW error', err));
+    });
+  }
 </script>
 </body>
 </html>
