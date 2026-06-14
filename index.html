@@ -389,7 +389,7 @@
         <p>All entries — live from the shared database</p>
       </div>
       <div style="display:flex;gap:10px;">
-        <button class="btn btn-outline" onclick="exportCSV()">↓ Export Data</button>
+        <button class="btn btn-outline" onclick="exportCSV()">↓ Copy Data</button>
         <button class="btn btn-outline" onclick="loadRecords()">↺ Refresh</button>
         <button class="btn btn-gold" onclick="showSection('entry')">+ New Entry</button>
       </div>
@@ -531,7 +531,7 @@
   }
 
   async function apiGet(params = '') {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/jasco_records?order=created_at.desc${params}`, { headers: headers() });
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/jasco_records?order=created_at.asc${params}`, { headers: headers() });
     if (!res.ok) throw new Error(await res.text());
     return res.json();
   }
@@ -651,7 +651,7 @@
 
     tbody.innerHTML = data.map((r, i) => `
       <tr>
-        <td style="color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:12px">${data.length - i}</td>
+        <td style="color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:12px">${i + 1}</td>
         <td style="white-space:nowrap">${r.date || '—'}</td>
         <td>${r.district || '—'}</td>
         <td><strong>${r.company}</strong></td>
