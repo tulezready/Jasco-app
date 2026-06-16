@@ -380,6 +380,19 @@
         </div>
       </div>
 
+      <div class="form-divider">Additional Information</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Notes</label>
+          <textarea id="f-notes" placeholder="Any additional observations about this business…"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Trading License (PDF)</label>
+          <input type="file" id="f-license" accept="application/pdf" style="padding:6px 12px;background:var(--white);">
+          <span id="f-license-status" style="font-size:12px;color:var(--muted);margin-top:4px;"></span>
+        </div>
+      </div>
+
       <div class="form-actions">
         <button class="btn btn-primary" id="save-btn" onclick="saveRecord()">Save Record</button>
         <button class="btn btn-outline" onclick="clearForm()">Clear</button>
@@ -396,7 +409,7 @@
         <p>All entries — live from the shared database</p>
       </div>
       <div style="display:flex;gap:10px;">
-        <button class="btn btn-outline" onclick="exportCSV()">↓ Export Data</button>
+        <button class="btn btn-outline" onclick="exportCSV()">↓ Copy Data</button>
         <button class="btn btn-outline" onclick="loadRecords()">↺ Refresh</button>
         <button class="btn btn-gold" onclick="showSection('entry')">+ New Entry</button>
       </div>
@@ -434,6 +447,8 @@
             <th>Issues</th>
             <th>Penalty</th>
             <th>Challenges</th>
+            <th>Notes</th>
+            <th>License</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -484,6 +499,16 @@
       <div class="form-group"><label>Penalty</label><textarea id="m-penalty"></textarea></div>
       <div class="form-group"><label>Challenges</label><textarea id="m-challenges"></textarea></div>
     </div>
+    <div class="form-divider">Additional Information</div>
+    <div class="form-row">
+      <div class="form-group"><label>Notes</label><textarea id="m-notes"></textarea></div>
+      <div class="form-group">
+        <label>Trading License (PDF)</label>
+        <input type="file" id="m-license" accept="application/pdf" style="padding:6px 12px;background:var(--white);">
+        <span id="m-license-status" style="font-size:12px;color:var(--muted);margin-top:4px;"></span>
+        <span id="m-license-current" style="font-size:12px;color:var(--sky);margin-top:4px;"></span>
+      </div>
+    </div>
     <div class="form-actions">
       <button class="btn btn-primary" onclick="saveEdit()">Save Changes</button>
       <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
@@ -497,6 +522,7 @@
   let allRecords = [];
   let editId = null;
 
+
   // ── INIT ──
   function init() {
     SUPABASE_URL = localStorage.getItem('jasco_url') || '';
@@ -505,6 +531,8 @@
       document.getElementById('setup-screen').style.display = 'none';
       document.getElementById('app').style.display = 'block';
       document.getElementById('f-date').valueAsDate = new Date();
+    document.getElementById('f-license').value = '';
+    document.getElementById('f-license-status').textContent = '';
       loadRecords();
       renderDashboard();
     }
@@ -521,6 +549,8 @@
     document.getElementById('setup-screen').style.display = 'none';
     document.getElementById('app').style.display = 'block';
     document.getElementById('f-date').valueAsDate = new Date();
+    document.getElementById('f-license').value = '';
+    document.getElementById('f-license-status').textContent = '';
     loadRecords();
     renderDashboard();
   }
@@ -581,6 +611,22 @@
   }
 
   // ── SAVE RECORD ──
+  async function uploadLicense(file) {
+    const filename = `license_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g,'_')}`;
+    const res = await fetch(`${SUPABASE_URL}/storage/v1/object/licenses/${filename}`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/pdf',
+        'x-upsert': 'true'
+      },
+      body: file
+    });
+    if (!res.ok) throw new Error('Upload failed');
+    return `${SUPABASE_URL}/storage/v1/object/public/licenses/${filename}`;
+  }
+
   async function saveRecord() {
     const company = document.getElementById('f-company').value.trim();
     const date = document.getElementById('f-date').value;
@@ -596,6 +642,22 @@
     btn.disabled = true;
     btn.textContent = 'Saving…';
 
+    let license_url = '';
+    const licenseFile = document.getElementById('f-license').files[0];
+    if (licenseFile) {
+      btn.textContent = 'Uploading license…';
+      document.getElementById('f-license-status').textContent = 'Uploading…';
+      try {
+        license_url = await uploadLicense(licenseFile);
+        document.getElementById('f-license-status').textContent = '✓ Uploaded';
+      } catch(e) {
+        showToast('License upload failed. Record will be saved without it.', true);
+        document.getElementById('f-license-status').textContent = '✗ Upload failed';
+      }
+    }
+
+    btn.textContent = 'Saving…';
+
     const rec = {
       date, district, ward,
       llg: document.getElementById('f-llg').value.trim(),
@@ -606,6 +668,8 @@
       issues: document.getElementById('f-issues').value.trim(),
       penalty: document.getElementById('f-penalty').value.trim(),
       challenges: document.getElementById('f-challenges').value.trim(),
+      notes: document.getElementById('f-notes').value.trim(),
+      license_url,
     };
 
     try {
@@ -623,10 +687,12 @@
   }
 
   function clearForm() {
-    ['f-date','f-district','f-ward','f-llg','f-company','f-owner','f-manager','f-contact','f-issues','f-penalty','f-challenges'].forEach(id => {
+    ['f-date','f-district','f-ward','f-llg','f-company','f-owner','f-manager','f-contact','f-issues','f-penalty','f-challenges','f-notes'].forEach(id => {
       document.getElementById(id).value = '';
     });
     document.getElementById('f-date').valueAsDate = new Date();
+    document.getElementById('f-license').value = '';
+    document.getElementById('f-license-status').textContent = '';
   }
 
   // ── TABLE ──
@@ -669,6 +735,8 @@
         <td>${r.issues ? `<span class="tag tag-red">⚠ Issues</span>` : `<span class="tag tag-green">✓ Clear</span>`}</td>
         <td>${r.penalty ? `<span class="tag tag-yellow">Penalised</span>` : '—'}</td>
         <td style="color:var(--muted);font-size:12px">${r.challenges ? r.challenges.substring(0,40)+(r.challenges.length>40?'…':'') : '—'}</td>
+        <td style="color:var(--muted);font-size:12px">${r.notes ? r.notes.substring(0,40)+(r.notes.length>40?'…':'') : '—'}</td>
+        <td>${r.license_url ? `<a href="${r.license_url}" target="_blank" style="color:var(--sky);font-size:12px;font-weight:600;">📄 View</a>` : '—'}</td>
         <td>
           <div class="row-actions">
             <button class="btn-sm btn-sm-edit" onclick="openEdit(${r.id})">Edit</button>
@@ -694,11 +762,26 @@
     document.getElementById('m-issues').value = r.issues || '';
     document.getElementById('m-penalty').value = r.penalty || '';
     document.getElementById('m-challenges').value = r.challenges || '';
+    document.getElementById('m-notes').value = r.notes || '';
+    document.getElementById('m-license').value = '';
+    document.getElementById('m-license-status').textContent = '';
+    document.getElementById('m-license-current').innerHTML = r.license_url ? `Current: <a href='${r.license_url}' target='_blank'>View PDF</a>` : '';
     document.getElementById('modal').classList.add('open');
   }
 
   async function saveEdit() {
     if (!editId) return;
+    let license_url = records.find ? (allRecords.find(r => r.id === editId)||{}).license_url || '' : '';
+    const licenseFile = document.getElementById('m-license').files[0];
+    if (licenseFile) {
+      document.getElementById('m-license-status').textContent = 'Uploading…';
+      try {
+        license_url = await uploadLicense(licenseFile);
+        document.getElementById('m-license-status').textContent = '✓ Uploaded';
+      } catch(e) {
+        showToast('License upload failed.', true);
+      }
+    }
     const data = {
       date: document.getElementById('m-date').value,
       district: document.getElementById('m-district').value,
@@ -711,6 +794,8 @@
       issues: document.getElementById('m-issues').value.trim(),
       penalty: document.getElementById('m-penalty').value.trim(),
       challenges: document.getElementById('m-challenges').value.trim(),
+      notes: document.getElementById('m-notes').value.trim(),
+      ...(license_url && { license_url }),
     };
     try {
       await apiUpdate(editId, data);
@@ -789,7 +874,7 @@
 
   function exportCSV() {
     if (allRecords.length === 0) { showToast('No records to export.', true); return; }
-    const hdrs = ['No','Date','District','Company','Owner','Manager','Ward','LLG','Contact','Issues','Penalty','Challenges'];
+    const hdrs = ['No','Date','District','Company','Owner','Manager','Ward','LLG','Contact','Issues','Penalty','Challenges','Notes','License'];
     const sorted = [...allRecords].reverse();
     const rows = sorted.map((r, i) => [
       i + 1, r.date, r.district, r.company, r.owner, r.manager,
