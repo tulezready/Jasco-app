@@ -875,8 +875,7 @@
   function exportCSV() {
     if (allRecords.length === 0) { showToast('No records to export.', true); return; }
     const hdrs = ['No','Date','District','Company','Owner','Manager','Ward','LLG','Contact','Issues','Penalty','Challenges','Notes','License'];
-    const sorted = [...allRecords].reverse();
-    const rows = sorted.map((r, i) => [
+    const rows = allRecords.map((r, i) => [
       i + 1, r.date, r.district, r.company, r.owner, r.manager,
       r.ward, r.llg, r.contact, r.issues, r.penalty, r.challenges
     ]);
@@ -942,3 +941,4 @@
 </script>
 </body>
 </html>
+
