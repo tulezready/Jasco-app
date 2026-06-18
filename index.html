@@ -875,10 +875,12 @@
   function exportCSV() {
     if (allRecords.length === 0) { showToast('No records to export.', true); return; }
     const hdrs = ['No','Date','District','Company','Owner','Manager','Ward','LLG','Contact','Issues','Penalty','Challenges','Notes','License'];
-    const rows = allRecords.map((r, i) => [
-      i + 1, r.date, r.district, r.company, r.owner, r.manager,
-      r.ward, r.llg, r.contact, r.issues, r.penalty, r.challenges
-    ]);
+    const rows = allRecords.map((r, i) => ({
+      no: i + 1, date: r.date, district: r.district, company: r.company,
+      owner: r.owner, manager: r.manager, ward: r.ward, llg: r.llg,
+      contact: r.contact, issues: r.issues, penalty: r.penalty,
+      challenges: r.challenges, notes: r.notes, license_url: r.license_url
+    }));
     let html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
     <title>JASCO Export – ${new Date().toISOString().slice(0,10)}</title>
     <style>
@@ -890,6 +892,7 @@
       td { padding: 8px 12px; border-bottom: 1px solid #ddd; vertical-align: top; }
       tr:nth-child(even) td { background: #f9f9f9; }
       tr:hover td { background: #f0f5ff; }
+      a { color: #4a90b8; font-weight: 600; }
       .btn { display: inline-block; margin-bottom: 16px; padding: 9px 20px; background: #c8922a; color: #0d1b2a; border: none; border-radius: 5px; font-size: 14px; font-weight: 600; cursor: pointer; margin-right: 10px; }
       @media print { .btn { display: none; } }
     </style></head><body>
@@ -903,7 +906,22 @@
     <button class="btn" onclick="window.print()">🖨 Print / Save as PDF</button>
     <table>
       <thead><tr>${hdrs.map(h => `<th>${h}</th>`).join('')}</tr></thead>
-      <tbody>${rows.map(r => `<tr>${r.map(v => `<td>${v||'—'}</td>`).join('')}</tr>`).join('')}</tbody>
+      <tbody>${rows.map(r => `<tr>
+        <td>${r.no}</td>
+        <td>${r.date||'—'}</td>
+        <td>${r.district||'—'}</td>
+        <td>${r.company||'—'}</td>
+        <td>${r.owner||'—'}</td>
+        <td>${r.manager||'—'}</td>
+        <td>${r.ward||'—'}</td>
+        <td>${r.llg||'—'}</td>
+        <td>${r.contact||'—'}</td>
+        <td>${r.issues||'—'}</td>
+        <td>${r.penalty||'—'}</td>
+        <td>${r.challenges||'—'}</td>
+        <td>${r.notes||'—'}</td>
+        <td>${r.license_url ? `<a href="${r.license_url}" target="_blank">View PDF</a>` : '—'}</td>
+      </tr>`).join('')}</tbody>
     </table>
     </body></html>`;
     const win = window.open('', '_blank');
