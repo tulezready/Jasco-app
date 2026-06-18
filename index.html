@@ -409,7 +409,7 @@
         <p>All entries — live from the shared database</p>
       </div>
       <div style="display:flex;gap:10px;">
-        <button class="btn btn-outline" onclick="exportCSV()">↓ Copy Data</button>
+        <button class="btn btn-outline" onclick="openExportModal()">↓ Export</button>
         <button class="btn btn-outline" onclick="loadRecords()">↺ Refresh</button>
         <button class="btn btn-gold" onclick="showSection('entry')">+ New Entry</button>
       </div>
@@ -460,6 +460,51 @@
   </div>
 
 </main>
+</div>
+
+<!-- EXPORT FILTER MODAL -->
+<div class="modal-overlay" id="export-modal">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-header">
+      <h3>Export Records</h3>
+      <button class="modal-close" onclick="closeExportModal()">✕</button>
+    </div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:20px;">Filter what you want to export. Leave blank to export everything.</p>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Date</label>
+        <input type="date" id="ex-date">
+      </div>
+      <div class="form-group">
+        <label>District</label>
+        <select id="ex-district">
+          <option value="">All Districts</option>
+          <option value="Gazelle District">Gazelle District</option>
+          <option value="Kokopo District">Kokopo District</option>
+          <option value="Pomio District">Pomio District</option>
+          <option value="Rabaul District">Rabaul District</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>LLG</label>
+        <input type="text" id="ex-llg" placeholder="e.g. Bitapaka LLG">
+      </div>
+      <div class="form-group">
+        <label>Compliance Status</label>
+        <select id="ex-compliance">
+          <option value="">All Records</option>
+          <option value="yes">Has Issues Only</option>
+          <option value="no">No Issues Only</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-primary" onclick="exportCSV()">Export</button>
+      <button class="btn btn-outline" onclick="closeExportModal()">Cancel</button>
+    </div>
+  </div>
 </div>
 
 <!-- TOAST -->
@@ -872,10 +917,34 @@
     renderTable(allRecords);
   }
 
+  function openExportModal() {
+    document.getElementById('export-modal').classList.add('open');
+  }
+
+  function closeExportModal() {
+    document.getElementById('export-modal').classList.remove('open');
+  }
+
   function exportCSV() {
+    closeExportModal();
+    const dateFilter = document.getElementById('ex-date').value;
+    const districtFilter = document.getElementById('ex-district').value;
+    const llgFilter = document.getElementById('ex-llg').value.toLowerCase().trim();
+    const complianceFilter = document.getElementById('ex-compliance').value;
+
+    let filtered = allRecords.filter(r => {
+      const matchDate = !dateFilter || r.date === dateFilter;
+      const matchDistrict = !districtFilter || r.district === districtFilter;
+      const matchLLG = !llgFilter || (r.llg||'').toLowerCase().includes(llgFilter);
+      const matchCompliance = !complianceFilter ||
+        (complianceFilter === 'yes' ? r.issues : !r.issues);
+      return matchDate && matchDistrict && matchLLG && matchCompliance;
+    });
+
+    if (filtered.length === 0) { showToast('No records match your filters.', true); return; }
     if (allRecords.length === 0) { showToast('No records to export.', true); return; }
     const hdrs = ['No','Date','District','Company','Owner','Manager','Ward','LLG','Contact','Issues','Penalty','Challenges','Notes','License'];
-    const rows = allRecords.map((r, i) => ({
+    const rows = filtered.map((r, i) => ({
       no: i + 1, date: r.date, district: r.district, company: r.company,
       owner: r.owner, manager: r.manager, ward: r.ward, llg: r.llg,
       contact: r.contact, issues: r.issues, penalty: r.penalty,
@@ -944,6 +1013,10 @@
 
   document.getElementById('modal').addEventListener('click', function(e) {
     if (e.target === this) closeModal();
+  });
+
+  document.getElementById('export-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeExportModal();
   });
 
   init();
